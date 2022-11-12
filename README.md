@@ -1,9 +1,9 @@
 # gotrtc
-Go package for ctrtc(tencent trtc)
+Go package for [ctrtc](https://github.com/lynnplus/ctrtc)(tencent trtc)
 
 ## Use
 
-### install ctrtc
+### install [ctrtc](https://github.com/lynnplus/ctrtc)
 
 ```
 git clone https://github.com/lynnplus/ctrtc.git
