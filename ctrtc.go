@@ -28,10 +28,10 @@ import (
 	"unsafe"
 )
 
-var mainCloud *TrtcCloud
+var mainCloud *trtcCloud
 var initLock sync.Mutex
 
-func GetShareInstance() *TrtcCloud {
+func GetShareInstance() TrtcCloud {
 	if mainCloud != nil {
 		return mainCloud
 	}
@@ -58,77 +58,84 @@ func DestroyShareInstance() {
 	initLock.Unlock()
 }
 
-func newTrtcCloud(main bool, pointer unsafe.Pointer) *TrtcCloud {
-	return &TrtcCloud{
+var _ TrtcCloud = (*trtcCloud)(nil)
+
+type trtcCloud struct {
+	p             unsafe.Pointer
+	isMain        bool
+	callbackCache map[Callback]*C.CTrtcCloudCallback
+}
+
+func newTrtcCloud(main bool, pointer unsafe.Pointer) *trtcCloud {
+	return &trtcCloud{
 		p:             pointer,
 		isMain:        main,
 		callbackCache: map[Callback]*C.CTrtcCloudCallback{},
 	}
 }
 
-type TrtcCloud struct {
-	p             unsafe.Pointer
-	isMain        bool
-	callbackCache map[Callback]*C.CTrtcCloudCallback
-}
-
-func (tc *TrtcCloud) GetSDKVersion() string {
+func (tc *trtcCloud) GetSDKVersion() string {
 	return C.GoString(C.getTrtcSDKVersion((C.CTrtcCloud)(tc.p)))
 }
 
-func (tc *TrtcCloud) SetConsoleEnabled(enable bool) {
+func (tc *trtcCloud) SetConsoleEnabled(enable bool) {
 	C.setTrtcConsoleEnabled((C.CTrtcCloud)(tc.p), C.bool(enable))
 }
 
-func (tc *TrtcCloud) SetLogCompressEnabled(enable bool) {
+func (tc *trtcCloud) SetLogCompressEnabled(enable bool) {
 	C.setTrtcLogCompressEnabled((C.CTrtcCloud)(tc.p), C.bool(enable))
 }
 
-func (tc *TrtcCloud) SetLogLevel(level LogLevel) {
+func (tc *trtcCloud) SetLogLevel(level LogLevel) {
 	C.setTrtcLogLevel((C.CTrtcCloud)(tc.p), C.CTRTCLogLevel(level))
 }
 
-func (tc *TrtcCloud) SetLogDirPath(path string) {
+func (tc *trtcCloud) SetLogDirPath(path string) {
 	cp := C.CString(path)
 	defer C.free(unsafe.Pointer(cp))
 	C.setTrtcLogDirPath((C.CTrtcCloud)(tc.p), cp)
 }
 
-func (tc *TrtcCloud) MuteLocalVideo(streamType VideoStreamType, mute bool) {
+func (tc *trtcCloud) MuteLocalVideo(streamType VideoStreamType, mute bool) {
 	C.muteTrtcLocalVideo((C.CTrtcCloud)(tc.p), C.CTRTCVideoStreamType(streamType), C.bool(mute))
 }
 
-func (tc *TrtcCloud) MuteLocalAudio(mute bool) {
+func (tc *trtcCloud) MuteLocalAudio(mute bool) {
 	C.muteTrtcLocalAudio((C.CTrtcCloud)(tc.p), C.bool(mute))
 }
 
-func (tc *TrtcCloud) AddCallback(cb Callback) {
+func (tc *trtcCloud) AddCallback(cb Callback) {
 	temp := createCallback(cb)
 	C.addTrtcCallback((C.CTrtcCloud)(tc.p), temp)
 	tc.callbackCache[cb] = temp
 }
 
-func (tc *TrtcCloud) RemoveCallback(cb Callback) {
+func (tc *trtcCloud) RemoveCallback(cb Callback) {
 	temp, ok := tc.callbackCache[cb]
 	if ok {
 		C.removeTrtcCallback((C.CTrtcCloud)(tc.p), temp)
 		destroyCallback(temp)
+		delete(tc.callbackCache, cb)
 	}
 }
 
-func (tc *TrtcCloud) CreateSubCloud() *TrtcCloud {
+func (tc *trtcCloud) CreateSubCloud() TrtcCloud {
 	p := C.createTrtcSubCloud()
 	return newTrtcCloud(false, unsafe.Pointer(p))
 }
 
-func (tc *TrtcCloud) DestroySubCloud(sub *TrtcCloud) {
-	if sub.isMain {
-		panic("must be use main-cloud destroy")
+func (tc *trtcCloud) Destroy() {
+	if tc.isMain {
+		panic("main trtc cloud must be use DestroyShareInstance to destroy")
 	}
-	C.destroyTrtcSubCloud((C.CTrtcCloud)(sub.p))
+	C.destroyTrtcSubCloud((C.CTrtcCloud)(tc.p))
 }
 
-func (tc *TrtcCloud) EnterRoom(params *RoomParams) error {
+func (tc *trtcCloud) IsMainCloud() bool {
+	return tc.isMain
+}
+
+func (tc *trtcCloud) EnterRoom(params *RoomParams) error {
 	if params == nil || params.UserId == "" || params.UserSignature == "" {
 		return errors.New("enter room params err")
 	}
@@ -164,23 +171,23 @@ func (tc *TrtcCloud) EnterRoom(params *RoomParams) error {
 	return nil
 }
 
-func (tc *TrtcCloud) ExitRoom() {
+func (tc *trtcCloud) ExitRoom() {
 	C.exitTrtcRoom((C.CTrtcCloud)(tc.p))
 }
 
-func (tc *TrtcCloud) SetDefaultStreamRecvMode(autoRecvAudio, autoRecvVideo bool) {
+func (tc *trtcCloud) SetDefaultStreamRecvMode(autoRecvAudio, autoRecvVideo bool) {
 	C.setTrtcDefaultStreamRecvMode((C.CTrtcCloud)(tc.p), C.bool(autoRecvAudio), C.bool(autoRecvVideo))
 }
 
-func (tc *TrtcCloud) EnableCustomVideoCapture(enable bool) {
+func (tc *trtcCloud) EnableCustomVideoCapture(enable bool) {
 	C.enableTrtcCustomVideoCapture((C.CTrtcCloud)(tc.p), C.TRTCVideoStreamTypeBig, C.bool(enable))
 }
 
-func (tc *TrtcCloud) EnableCustomAudioCapture(enable bool) {
+func (tc *trtcCloud) EnableCustomAudioCapture(enable bool) {
 	C.enableTrtcCustomAudioCapture((C.CTrtcCloud)(tc.p), C.bool(enable))
 }
 
-func (tc *TrtcCloud) SetVideoEncoderParam(param *VideoEncoderParam) {
+func (tc *trtcCloud) SetVideoEncoderParam(param *VideoEncoderParam) {
 	var data C.CTRTCVideoEncParam
 	data.videoResolution = C.int(param.Resolution)
 	data.resMode = C.CTRTCVideoResolutionMode(param.ResolutionMode)
@@ -191,11 +198,11 @@ func (tc *TrtcCloud) SetVideoEncoderParam(param *VideoEncoderParam) {
 	C.setTrtcVideoEncoderParam((C.CTrtcCloud)(tc.p), &data)
 }
 
-func (tc *TrtcCloud) GenerateCustomPTS() uint64 {
+func (tc *trtcCloud) GenerateCustomPTS() uint64 {
 	return uint64(C.generateTrtcCustomPTS((C.CTrtcCloud)(tc.p)))
 }
 
-func (tc *TrtcCloud) SendCustomVideoData(frame *VideoFrame) {
+func (tc *trtcCloud) SendCustomVideoData(frame *VideoFrame) {
 	C.sendTrtcCustomVideoData((C.CTrtcCloud)(tc.p), C.CTRTCVideoStreamType(frame.StreamType),
 		C.int(frame.Width),
 		C.int(frame.Height),
@@ -205,6 +212,6 @@ func (tc *TrtcCloud) SendCustomVideoData(frame *VideoFrame) {
 		C.CTRTCVideoRotation(frame.Rotation))
 }
 
-func (tc *TrtcCloud) StartLocalTest() {
+func (tc *trtcCloud) StartLocalTest() {
 	C.startTrtcLocalTest((C.CTrtcCloud)(tc.p))
 }

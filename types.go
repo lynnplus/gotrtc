@@ -1,5 +1,3 @@
-//go:build windows || darwin
-
 /*
  * Copyright (c) 2022 Lynn <lynnplus90@gmail.com>
  *

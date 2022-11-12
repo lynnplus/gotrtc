@@ -15,3 +15,47 @@
  */
 
 package gotrtc
+
+type TrtcCloud interface {
+	GetSDKVersion() string
+	SetConsoleEnabled(enable bool)
+	SetLogCompressEnabled(enable bool)
+	SetLogLevel(level LogLevel)
+	SetLogDirPath(path string)
+
+	MuteLocalVideo(streamType VideoStreamType, mute bool)
+	MuteLocalAudio(mute bool)
+
+	AddCallback(cb Callback)
+	RemoveCallback(cb Callback)
+
+	CreateSubCloud() TrtcCloud
+	Destroy()
+	IsMainCloud() bool
+
+	EnterRoom(params *RoomParams) error
+	ExitRoom()
+
+	SetDefaultStreamRecvMode(autoRecvAudio, autoRecvVideo bool)
+	EnableCustomVideoCapture(enable bool)
+	EnableCustomAudioCapture(enable bool)
+
+	SetVideoEncoderParam(param *VideoEncoderParam)
+	GenerateCustomPTS() uint64
+	SendCustomVideoData(frame *VideoFrame)
+	StartLocalTest()
+}
+
+type Callback interface {
+	OnError(errCode int, errMsg string, extraInfo any)
+	OnWarning(code int, msg string, extraInfo any)
+	OnEnterRoom(result int)
+	OnExitRoom(reason int)
+	OnSendFirstLocalVideoFrame(streamType int)
+	OnSendFirstLocalAudioFrame()
+	OnRemoteUserEnterRoom(userId string)
+	OnRemoteUserLeaveRoom(userId string, reason int)
+	OnConnectionLost()
+	OnTryToReconnect()
+	OnConnectionRecovery()
+}

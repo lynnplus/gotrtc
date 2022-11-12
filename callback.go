@@ -41,20 +41,6 @@ import (
 	"unsafe"
 )
 
-type Callback interface {
-	OnError(errCode int, errMsg string, extraInfo any)
-	OnWarning(code int, msg string, extraInfo any)
-	OnEnterRoom(result int)
-	OnExitRoom(reason int)
-	OnSendFirstLocalVideoFrame(streamType int)
-	OnSendFirstLocalAudioFrame()
-	OnRemoteUserEnterRoom(userId string)
-	OnRemoteUserLeaveRoom(userId string, reason int)
-	OnConnectionLost()
-	OnTryToReconnect()
-	OnConnectionRecovery()
-}
-
 //export cgoCallOnTrtcError
 func cgoCallOnTrtcError(ctx unsafe.Pointer, errCode C.int, errMsg *C.const_char, extraInfo unsafe.Pointer) {
 	if ctx == nil {
