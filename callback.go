@@ -25,40 +25,133 @@ typedef const char const_char;
 void cgoCallOnTrtcError(void* ctx,int errCode, const char *errMsg, void *extraInfo);
 void cgoCallOnTrtcWarn(void* ctx,int warningCode, const char *warningMsg, void *extraInfo);
 void cgoCallOnTrtcEnterRoom(void* ctx,int result);
+void cgoCallOnTrtcExitRoom(void* ctx,int reason);
 void cgoCallOnTrtcSendFirstLocalVideoFrame (void* ctx,int streamType);
+void cgoCallOnTrtcSendFirstLocalAudioFrame(void* ctx);
+void cgoCallOnTrtcRemoteUserEnterRoom(void* ctx,const char *userId);
+void cgoCallOnTrtcRemoteUserLeaveRoom(void* ctx,const char *userId,int reason);
+void cgoCallOnTrtcConnectionLost(void* ctx);
+void cgoCallOnTrtcTryToReconnect(void* ctx);
+void cgoCallOnTrtcConnectionRecovery(void* ctx);
+
+
 */
 import "C"
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type Callback interface {
 	OnError(errCode int, errMsg string, extraInfo any)
 	OnWarning(code int, msg string, extraInfo any)
 	OnEnterRoom(result int)
+	OnExitRoom(reason int)
 	OnSendFirstLocalVideoFrame(streamType int)
+	OnSendFirstLocalAudioFrame()
+	OnRemoteUserEnterRoom(userId string)
+	OnRemoteUserLeaveRoom(userId string, reason int)
+	OnConnectionLost()
+	OnTryToReconnect()
+	OnConnectionRecovery()
 }
 
 //export cgoCallOnTrtcError
 func cgoCallOnTrtcError(ctx unsafe.Pointer, errCode C.int, errMsg *C.const_char, extraInfo unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
 	cb := *(*Callback)(ctx)
 	cb.OnError(int(errCode), C.GoString(errMsg), extraInfo)
 }
 
 //export cgoCallOnTrtcWarn
 func cgoCallOnTrtcWarn(ctx unsafe.Pointer, code C.int, msg *C.const_char, extraInfo unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
 	cb := *(*Callback)(ctx)
 	cb.OnWarning(int(code), C.GoString(msg), extraInfo)
 }
 
 //export cgoCallOnTrtcEnterRoom
 func cgoCallOnTrtcEnterRoom(ctx unsafe.Pointer, result C.int) {
+	if ctx == nil {
+		return
+	}
 	cb := *(*Callback)(ctx)
 	cb.OnEnterRoom(int(result))
 }
 
+//export cgoCallOnTrtcExitRoom
+func cgoCallOnTrtcExitRoom(ctx unsafe.Pointer, reason C.int) {
+	if ctx == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnExitRoom(int(reason))
+}
+
 //export cgoCallOnTrtcSendFirstLocalVideoFrame
 func cgoCallOnTrtcSendFirstLocalVideoFrame(ctx unsafe.Pointer, streamType C.int) {
+	if ctx == nil {
+		return
+	}
 	cb := *(*Callback)(ctx)
 	cb.OnSendFirstLocalVideoFrame(int(streamType))
+}
+
+//export cgoCallOnTrtcSendFirstLocalAudioFrame
+func cgoCallOnTrtcSendFirstLocalAudioFrame(ctx unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnSendFirstLocalAudioFrame()
+}
+
+//export cgoCallOnTrtcRemoteUserEnterRoom
+func cgoCallOnTrtcRemoteUserEnterRoom(ctx unsafe.Pointer, userId *C.const_char) {
+	if ctx == nil || userId == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnRemoteUserEnterRoom(C.GoString(userId))
+}
+
+//export cgoCallOnTrtcRemoteUserLeaveRoom
+func cgoCallOnTrtcRemoteUserLeaveRoom(ctx unsafe.Pointer, userId *C.const_char, reason C.int) {
+	if ctx == nil || userId == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnRemoteUserLeaveRoom(C.GoString(userId), int(reason))
+}
+
+//export cgoCallOnTrtcConnectionLost
+func cgoCallOnTrtcConnectionLost(ctx unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnConnectionLost()
+}
+
+//export cgoCallOnTrtcTryToReconnect
+func cgoCallOnTrtcTryToReconnect(ctx unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnTryToReconnect()
+}
+
+//export cgoCallOnTrtcConnectionRecovery
+func cgoCallOnTrtcConnectionRecovery(ctx unsafe.Pointer) {
+	if ctx == nil {
+		return
+	}
+	cb := *(*Callback)(ctx)
+	cb.OnConnectionRecovery()
 }
 
 func createCallback(callback Callback) *C.CTrtcCloudCallback {
@@ -67,7 +160,14 @@ func createCallback(callback Callback) *C.CTrtcCloudCallback {
 	cb.onError = C.TrtcCBErrorFunc(C.cgoCallOnTrtcError)
 	cb.onWarning = C.TrtcCBWarnFunc(C.cgoCallOnTrtcWarn)
 	cb.onEnterRoom = C.TrtcCBEnterRoomFunc(C.cgoCallOnTrtcEnterRoom)
+	cb.onExitRoom = C.TrtcCBExitRoomFunc(C.cgoCallOnTrtcExitRoom)
+	cb.onRemoteUserEnterRoom = C.TrtcCBRemoteUserEnterRoomFunc(C.cgoCallOnTrtcRemoteUserEnterRoom)
+	cb.onRemoteUserLeaveRoom = C.TrtcCBRemoteUserLeaveRoomFunc(C.cgoCallOnTrtcRemoteUserLeaveRoom)
 	cb.onSendFirstLocalVideoFrame = C.TrtcCBSendFirstLocalVideoFrameFunc(C.cgoCallOnTrtcSendFirstLocalVideoFrame)
+	cb.onSendFirstLocalAudioFrame = C.TrtcCBSendFirstLocalAudioFrameFunc(C.cgoCallOnTrtcSendFirstLocalAudioFrame)
+	cb.onConnectionLost = C.TrtcCBConnectionLostFunc(C.cgoCallOnTrtcConnectionLost)
+	cb.onTryToReconnect = C.TrtcCBTryToReconnectFunc(C.cgoCallOnTrtcTryToReconnect)
+	cb.onConnectionRecovery = C.TrtcCBConnectionRecoveryFunc(C.cgoCallOnTrtcConnectionRecovery)
 	return cb
 }
 

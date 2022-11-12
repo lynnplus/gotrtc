@@ -76,6 +76,32 @@ func (tc *TrtcCloud) GetSDKVersion() string {
 	return C.GoString(C.getTrtcSDKVersion((C.CTrtcCloud)(tc.p)))
 }
 
+func (tc *TrtcCloud) SetConsoleEnabled(enable bool) {
+	C.setTrtcConsoleEnabled((C.CTrtcCloud)(tc.p), C.bool(enable))
+}
+
+func (tc *TrtcCloud) SetLogCompressEnabled(enable bool) {
+	C.setTrtcLogCompressEnabled((C.CTrtcCloud)(tc.p), C.bool(enable))
+}
+
+func (tc *TrtcCloud) SetLogLevel(level LogLevel) {
+	C.setTrtcLogLevel((C.CTrtcCloud)(tc.p), C.CTRTCLogLevel(level))
+}
+
+func (tc *TrtcCloud) SetLogDirPath(path string) {
+	cp := C.CString(path)
+	defer C.free(unsafe.Pointer(cp))
+	C.setTrtcLogDirPath((C.CTrtcCloud)(tc.p), cp)
+}
+
+func (tc *TrtcCloud) MuteLocalVideo(streamType VideoStreamType, mute bool) {
+	C.muteTrtcLocalVideo((C.CTrtcCloud)(tc.p), C.CTRTCVideoStreamType(streamType), C.bool(mute))
+}
+
+func (tc *TrtcCloud) MuteLocalAudio(mute bool) {
+	C.muteTrtcLocalAudio((C.CTrtcCloud)(tc.p), C.bool(mute))
+}
+
 func (tc *TrtcCloud) AddCallback(cb Callback) {
 	temp := createCallback(cb)
 	C.addTrtcCallback((C.CTrtcCloud)(tc.p), temp)
@@ -97,7 +123,7 @@ func (tc *TrtcCloud) CreateSubCloud() *TrtcCloud {
 
 func (tc *TrtcCloud) DestroySubCloud(sub *TrtcCloud) {
 	if sub.isMain {
-		panic("must be use main destroy")
+		panic("must be use main-cloud destroy")
 	}
 	C.destroyTrtcSubCloud((C.CTrtcCloud)(sub.p))
 }
@@ -126,13 +152,13 @@ func (tc *TrtcCloud) EnterRoom(params *RoomParams) error {
 	}()
 
 	var param C.CTRTCParams
-	param.sdkAppId = C.uint32_t(params.AppId)
+	param.sdkAppId = C.uint64_t(params.AppId)
 	param.roomId = C.uint32_t(params.RoomId)
 	param.userId = cUserId
 	param.userSig = cUserSig
 	param.strRoomId = cRoomId
 	param.privateMapKey = cPk
-	param.role = params.Role
+	param.role = C.CTRTCRoleType(params.Role)
 	C.enterTrtcRoom((C.CTrtcCloud)(tc.p), &param, C.TRTCAppSceneVideoCall)
 
 	return nil
@@ -156,11 +182,11 @@ func (tc *TrtcCloud) EnableCustomAudioCapture(enable bool) {
 
 func (tc *TrtcCloud) SetVideoEncoderParam(param *VideoEncoderParam) {
 	var data C.CTRTCVideoEncParam
-	data.videoResolution = param.Resolution
-	data.resMode = param.ResolutionMode
+	data.videoResolution = C.int(param.Resolution)
+	data.resMode = C.CTRTCVideoResolutionMode(param.ResolutionMode)
 	data.videoFps = C.uint32_t(param.Fps)
 	data.videoBitrate = C.uint32_t(param.Bitrate)
-	data.minVideoBitrateC.uint32_t(param.MinBitrate)
+	data.minVideoBitrate = C.uint32_t(param.MinBitrate)
 	data.enableAdjustRes = C.bool(param.EnableAdjustRes)
 	C.setTrtcVideoEncoderParam((C.CTrtcCloud)(tc.p), &data)
 }
@@ -170,13 +196,13 @@ func (tc *TrtcCloud) GenerateCustomPTS() uint64 {
 }
 
 func (tc *TrtcCloud) SendCustomVideoData(frame *VideoFrame) {
-	C.sendTrtcCustomVideoData((C.CTrtcCloud)(tc.p), frame.StreamType,
+	C.sendTrtcCustomVideoData((C.CTrtcCloud)(tc.p), C.CTRTCVideoStreamType(frame.StreamType),
 		C.int(frame.Width),
 		C.int(frame.Height),
 		(*C.char)(unsafe.Pointer(&frame.Buffer[0])),
 		C.int(frame.BufferLen),
 		C.uint64_t(frame.Timestamp),
-		frame.Rotation)
+		C.CTRTCVideoRotation(frame.Rotation))
 }
 
 func (tc *TrtcCloud) StartLocalTest() {

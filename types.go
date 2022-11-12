@@ -82,6 +82,18 @@ const (
 	VideoResolutionModePortrait  VideoResolutionMode = C.TRTCVideoResolutionModePortrait
 )
 
+type LogLevel int
+
+const (
+	LogLevelVerbose LogLevel = 0
+	LogLevelDebug   LogLevel = 1
+	LogLevelInfo    LogLevel = 2
+	LogLevelWarn    LogLevel = 3
+	LogLevelError   LogLevel = 4
+	LogLevelFatal   LogLevel = 5
+	LogLevelNone    LogLevel = 6
+)
+
 type VideoEncoderParam struct {
 	Resolution      VideoResolution
 	ResolutionMode  VideoResolutionMode
@@ -102,7 +114,7 @@ type VideoFrame struct {
 }
 
 type RoomParams struct {
-	AppId         uint
+	AppId         uint64
 	UserId        string
 	UserSignature string
 	StrRoomId     string
